@@ -206,12 +206,16 @@ create index if not exists idx_invites_pod on pod_invites(pod_id);
 
 -- 5) Updated-at trigger
 create or replace function set_updated_at()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
 begin
   new.updated_at = now();
   return new;
 end;
-$$ language plpgsql;
+$$;
 
 -- 5b) Helper functions (avoid RLS recursion in policies)
 create or replace function can_access_pod(pod_id uuid, user_id uuid)
@@ -321,6 +325,9 @@ DROP POLICY IF EXISTS pods_update ON pods;
 CREATE POLICY pods_update ON pods
 FOR UPDATE USING (
   is_pod_admin(pods.id, auth.uid())
+)
+WITH CHECK (
+  is_pod_admin(pods.id, auth.uid())
 );
 
 DROP POLICY IF EXISTS memberships_read ON pod_memberships;
@@ -337,19 +344,6 @@ FOR INSERT WITH CHECK (
 
 -- Memberships: invited users can accept into a pod
 DROP POLICY IF EXISTS memberships_insert_invited ON pod_memberships;
-CREATE POLICY memberships_insert_invited ON pod_memberships
-FOR INSERT WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM pod_invites
-    WHERE pod_invites.pod_id = pod_memberships.pod_id
-      AND pod_invites.status = 'pending'
-      AND (
-        pod_invites.invited_user_id = auth.uid()
-        OR pod_invites.invited_email = (auth.jwt() ->> 'email')
-      )
-  )
-  AND pod_memberships.user_id = auth.uid()
-);
 
 DROP POLICY IF EXISTS events_read ON events;
 CREATE POLICY events_read ON events
@@ -366,6 +360,10 @@ FOR INSERT WITH CHECK (
 DROP POLICY IF EXISTS events_update ON events;
 CREATE POLICY events_update ON events
 FOR UPDATE USING (
+  events.created_by = auth.uid()
+  OR is_pod_admin(events.pod_id, auth.uid())
+)
+WITH CHECK (
   events.created_by = auth.uid()
   OR is_pod_admin(events.pod_id, auth.uid())
 );
@@ -417,6 +415,14 @@ FOR UPDATE USING (
     WHERE events.id = event_checklist_items.event_id
       AND is_pod_admin(events.pod_id, auth.uid())
   )
+)
+WITH CHECK (
+  event_checklist_items.created_by = auth.uid()
+  OR EXISTS (
+    SELECT 1 FROM events
+    WHERE events.id = event_checklist_items.event_id
+      AND is_pod_admin(events.pod_id, auth.uid())
+  )
 );
 
 -- Invites: admins/owners can read all; invitees can read their own
@@ -438,9 +444,92 @@ FOR INSERT WITH CHECK (
 DROP POLICY IF EXISTS invites_update ON pod_invites;
 CREATE POLICY invites_update ON pod_invites
 FOR UPDATE USING (
-  pod_invites.invited_user_id = auth.uid()
-  OR pod_invites.invited_email = (auth.jwt() ->> 'email')
+  is_pod_admin(pod_invites.pod_id, auth.uid())
 );
+
+-- 8) RPCs for transactional writes
+create or replace function create_pod_with_owner(
+  name text,
+  description text,
+  location_text text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  new_pod_id uuid;
+begin
+  if auth.uid() is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  insert into pods (name, description, location_text, created_by)
+  values (create_pod_with_owner.name, create_pod_with_owner.description, create_pod_with_owner.location_text, auth.uid())
+  returning id into new_pod_id;
+
+  insert into pod_memberships (pod_id, user_id, role, is_active)
+  values (new_pod_id, auth.uid(), 'owner', true)
+  on conflict (pod_id, user_id) do update
+    set role = 'owner',
+        is_active = true;
+
+  return new_pod_id;
+end;
+$$;
+
+create or replace function accept_pod_invite(invite_id uuid)
+returns uuid
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  invite_row pod_invites%rowtype;
+begin
+  if auth.uid() is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  select * into invite_row
+  from pod_invites
+  where id = invite_id
+    and status = 'pending'
+  for update;
+
+  if not found then
+    raise exception 'Invite not found or already handled';
+  end if;
+
+  if invite_row.invited_user_id is not null and invite_row.invited_user_id <> auth.uid() then
+    raise exception 'Invite not for this user';
+  end if;
+
+  if invite_row.invited_user_id is null
+     and invite_row.invited_email is not null
+     and invite_row.invited_email <> (auth.jwt() ->> 'email') then
+    raise exception 'Invite not for this email';
+  end if;
+
+  insert into pod_memberships (pod_id, user_id, role, is_active)
+  values (invite_row.pod_id, auth.uid(), 'member', true)
+  on conflict (pod_id, user_id) do update
+    set is_active = true;
+
+  update pod_invites
+  set status = 'accepted',
+      invited_user_id = auth.uid()
+  where id = invite_row.id;
+
+  return invite_row.pod_id;
+end;
+$$;
+
+revoke all on function create_pod_with_owner(text, text, text) from public;
+revoke all on function accept_pod_invite(uuid) from public;
+grant execute on function create_pod_with_owner(text, text, text) to authenticated;
+grant execute on function accept_pod_invite(uuid) to authenticated;
 
 -- Notes:
 -- If your JWT claims do not include email, update invite policies to match your auth configuration.

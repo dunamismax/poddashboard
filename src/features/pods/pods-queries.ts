@@ -64,40 +64,27 @@ async function fetchPodMembers(podId: string): Promise<PodMember[]> {
 }
 
 type CreatePodInput = {
-  userId: string;
   name: string;
   description?: string | null;
   locationText?: string | null;
 };
 
-async function createPod({ userId, name, description, locationText }: CreatePodInput) {
-  const { data: pod, error: podError } = await supabase
-    .from('pods')
-    .insert({
-      name,
-      description: description ?? null,
-      location_text: locationText ?? null,
-      created_by: userId,
-    })
-    .select('id')
-    .single();
-
-  if (podError) {
-    throw podError;
-  }
-
-  const { error: membershipError } = await supabase.from('pod_memberships').insert({
-    pod_id: pod.id,
-    user_id: userId,
-    role: 'owner',
-    is_active: true,
+async function createPod({ name, description, locationText }: CreatePodInput) {
+  const { data, error } = await supabase.rpc('create_pod_with_owner', {
+    name,
+    description: description ?? null,
+    location_text: locationText ?? null,
   });
 
-  if (membershipError) {
-    throw membershipError;
+  if (error) {
+    throw error;
   }
 
-  return pod.id;
+  if (!data) {
+    throw new Error('Unable to create pod.');
+  }
+
+  return data as string;
 }
 
 export function usePodsByUser(userId?: string) {

@@ -21,10 +21,10 @@ export default function InvitesScreen() {
 
   const isLoading = authLoading || invitesQuery.isLoading;
 
-  const handleAccept = async (inviteId: string, podId: string) => {
+  const handleAccept = async (inviteId: string) => {
     if (!user) return;
     try {
-      await acceptInvite.mutateAsync({ inviteId, podId, userId: user.id });
+      const podId = await acceptInvite.mutateAsync({ inviteId });
       router.push(`/pod/${podId}`);
     } catch {
       // Errors surface in UI state via status text below.
@@ -53,7 +53,7 @@ export default function InvitesScreen() {
                 </Text>
                 <Button
                   mode="contained"
-                  onPress={() => handleAccept(invite.id, invite.pod_id)}
+                  onPress={() => handleAccept(invite.id)}
                   disabled={acceptInvite.isPending}>
                   Accept invite
                 </Button>

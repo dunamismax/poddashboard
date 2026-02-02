@@ -9,7 +9,6 @@ export type PodInvite = {
   invited_user_id: string | null;
   invited_by: string;
   status: 'pending' | 'accepted' | 'revoked' | 'expired';
-  token: string;
   expires_at: string | null;
   created_at: string;
   pod?: {
@@ -31,7 +30,9 @@ async function fetchInvitesForUser(userId: string, email: string | null): Promis
 
   const query = supabase
     .from('pod_invites')
-    .select('id,pod_id,invited_email,invited_user_id,invited_by,status,token,expires_at,created_at,pod:pods(id,name,location_text)')
+    .select(
+      'id,pod_id,invited_email,invited_user_id,invited_by,status,expires_at,created_at,pod:pods(id,name,location_text)'
+    )
     .eq('status', 'pending');
 
   if (email) {
@@ -85,34 +86,20 @@ async function createInvite({ podId, invitedEmail, invitedBy }: CreateInviteInpu
 
 type AcceptInviteInput = {
   inviteId: string;
-  podId: string;
-  userId: string;
 };
 
-async function acceptInvite({ inviteId, podId, userId }: AcceptInviteInput) {
-  const { error: membershipError } = await supabase.from('pod_memberships').upsert(
-    {
-      pod_id: podId,
-      user_id: userId,
-      role: 'member',
-      is_active: true,
-    },
-    { onConflict: 'pod_id,user_id' }
-  );
+async function acceptInvite({ inviteId }: AcceptInviteInput) {
+  const { data, error } = await supabase.rpc('accept_pod_invite', { invite_id: inviteId });
 
-  if (membershipError) {
-    throw membershipError;
+  if (error) {
+    throw error;
   }
 
-  const { error: inviteError } = await supabase
-    .from('pod_invites')
-    .update({ status: 'accepted', invited_user_id: userId })
-    .eq('id', inviteId)
-    .eq('status', 'pending');
-
-  if (inviteError) {
-    throw inviteError;
+  if (!data) {
+    throw new Error('Unable to accept invite.');
   }
+
+  return data as string;
 }
 
 export function usePendingInvites(userId?: string, email?: string | null) {

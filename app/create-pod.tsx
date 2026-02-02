@@ -33,7 +33,6 @@ export default function CreatePodScreen() {
 
     try {
       await createPod.mutateAsync({
-        userId: user.id,
         name: name.trim(),
         description: description.trim() ? description.trim() : null,
         locationText: location.trim() ? location.trim() : null,
