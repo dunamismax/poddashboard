@@ -2,71 +2,71 @@
 -- Safe to run multiple times; creates or updates schema, policies, and indexes without destroying data.
 
 -- 1) Extensions
-create extension if not exists  pgcrypto;
+create extension if not exists "pgcrypto";
 
 -- 2) Enums (create + ensure values)
-DO  BEGIN
+DO $$ BEGIN
   create type membership_role as enum ('owner', 'admin', 'member');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END ;
+END $$;
 
-DO  BEGIN
+DO $$ BEGIN
   create type invite_status as enum ('pending', 'accepted', 'revoked', 'expired');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END ;
+END $$;
 
-DO  BEGIN
+DO $$ BEGIN
   create type rsvp_status as enum ('yes', 'no', 'maybe');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END ;
+END $$;
 
-DO  BEGIN
+DO $$ BEGIN
   create type arrival_status as enum ('not_sure', 'on_the_way', 'arrived', 'late');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END ;
+END $$;
 
-DO  BEGIN
+DO $$ BEGIN
   create type checklist_state as enum ('open', 'done', 'blocked');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END ;
+END $$;
 
 -- Ensure enum values exist (safe for older deployments)
-DO  BEGIN
+DO $$ BEGIN
   ALTER TYPE membership_role ADD VALUE IF NOT EXISTS 'owner';
   ALTER TYPE membership_role ADD VALUE IF NOT EXISTS 'admin';
   ALTER TYPE membership_role ADD VALUE IF NOT EXISTS 'member';
-END ;
+END $$;
 
-DO  BEGIN
+DO $$ BEGIN
   ALTER TYPE invite_status ADD VALUE IF NOT EXISTS 'pending';
   ALTER TYPE invite_status ADD VALUE IF NOT EXISTS 'accepted';
   ALTER TYPE invite_status ADD VALUE IF NOT EXISTS 'revoked';
   ALTER TYPE invite_status ADD VALUE IF NOT EXISTS 'expired';
-END ;
+END $$;
 
-DO  BEGIN
+DO $$ BEGIN
   ALTER TYPE rsvp_status ADD VALUE IF NOT EXISTS 'yes';
   ALTER TYPE rsvp_status ADD VALUE IF NOT EXISTS 'no';
   ALTER TYPE rsvp_status ADD VALUE IF NOT EXISTS 'maybe';
-END ;
+END $$;
 
-DO  BEGIN
+DO $$ BEGIN
   ALTER TYPE arrival_status ADD VALUE IF NOT EXISTS 'not_sure';
   ALTER TYPE arrival_status ADD VALUE IF NOT EXISTS 'on_the_way';
   ALTER TYPE arrival_status ADD VALUE IF NOT EXISTS 'arrived';
   ALTER TYPE arrival_status ADD VALUE IF NOT EXISTS 'late';
-END ;
+END $$;
 
-DO  BEGIN
+DO $$ BEGIN
   ALTER TYPE checklist_state ADD VALUE IF NOT EXISTS 'open';
   ALTER TYPE checklist_state ADD VALUE IF NOT EXISTS 'done';
   ALTER TYPE checklist_state ADD VALUE IF NOT EXISTS 'blocked';
-END ;
+END $$;
 
 -- 3) Tables
 create table if not exists pods (
@@ -204,25 +204,25 @@ begin
 end;
  language plpgsql;
 
-DO  BEGIN
+DO $$ BEGIN
   create trigger pods_set_updated_at before update on pods
   for each row execute procedure set_updated_at();
-EXCEPTION WHEN duplicate_object THEN NULL; END ;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-DO  BEGIN
+DO $$ BEGIN
   create trigger profiles_set_updated_at before update on profiles
   for each row execute procedure set_updated_at();
-EXCEPTION WHEN duplicate_object THEN NULL; END ;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-DO  BEGIN
+DO $$ BEGIN
   create trigger events_set_updated_at before update on events
   for each row execute procedure set_updated_at();
-EXCEPTION WHEN duplicate_object THEN NULL; END ;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-DO  BEGIN
+DO $$ BEGIN
   create trigger checklist_set_updated_at before update on event_checklist_items
   for each row execute procedure set_updated_at();
-EXCEPTION WHEN duplicate_object THEN NULL; END ;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- 6) Row Level Security (RLS)
 ALTER TABLE pods ENABLE ROW LEVEL SECURITY;
