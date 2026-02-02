@@ -13,6 +13,20 @@ This is not a social network. It is social infrastructure for recurring, real-li
 - Lightweight, purpose-driven communication
 - Clear status and useful ETAs
 
+## Features (current)
+- Home screen scaffold for the next gather (arrival board, checklist, quick actions)
+- Pods overview scaffold (pods list + upcoming events)
+- Dark theme via React Native Paper
+- Expo Router tab navigation
+
+## Roadmap (near-term)
+- Pod detail screens (members, roles, recurring schedule)
+- Event detail flow (RSVP, arrival status, checklist editing)
+- Supabase-backed data (pods, events, membership, invites)
+- Auth (magic link + OAuth)
+- Realtime updates for arrivals and status changes
+- Notifications and reminders
+
 ## Tech stack (current)
 ### Client
 - Expo (React Native)
@@ -36,13 +50,37 @@ This is not a social network. It is social infrastructure for recurring, real-li
 - PostHog (analytics, privacy-friendly)
 
 ## Status
-Early build. Scaffolding in progress.
+Early build. UI scaffolding in progress, backend wiring next.
 
-## Getting started (soon)
-This repository is being scaffolded. Once the initial Expo app and local Supabase setup are in place, this section will include the exact steps to run the app locally.
+## Getting started
+1) Install dependencies
+```bash
+npm install
+```
+
+2) Configure env vars
+Create a local `.env` file with:
+```
+EXPO_PUBLIC_SUPABASE_URL=...
+EXPO_PUBLIC_SUPABASE_ANON_KEY=...
+```
+
+3) Run the app
+```bash
+npm start
+```
+
+### Android setup note
+If you run `npm run android`, ensure the Android SDK is installed and `ANDROID_HOME` is set, and that `platform-tools` is on your PATH so `adb` is available.
 
 ## Contributing
-If you want to help shape the MVP, open an issue with ideas or feedback.
+We welcome focused contributions that move the MVP forward.
+- Open an issue for product ideas or bug reports
+- Keep UI components under `src/` and routes under `app/`
+- Favor feature-first modules under `src/features/` as they are introduced
+- Avoid committing secrets; use `.env` (already ignored)
+
+If you want to pick up work, start with the Roadmap items and coordinate in an issue.
 
 ## License
 This project is licensed under the AGPL-3.0. See [LICENSE](LICENSE).

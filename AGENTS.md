@@ -20,8 +20,8 @@ It focuses on event-scoped planning, arrival, and real-time coordination.
   - src/lib/ : client helpers (env, Supabase, Query)
   - src/theme/ : theme tokens and Paper theme
   - src/components/ : shared UI
-  - src/features/ : domain modules (pods, events, auth)
-  - src/types/ : shared types
+  - src/features/ : domain modules (planned; not yet populated)
+  - src/types/ : shared types (planned; not yet populated)
   - src/assets/ : images and app icons
 
 ## Environment
@@ -37,6 +37,8 @@ It focuses on event-scoped planning, arrival, and real-time coordination.
 - Supabase client: `src/lib/supabase.ts`
 - Query client: `src/lib/queryClient.ts`
 - Env validation: `src/lib/env.ts`
+- UI scaffolding lives in `app/(tabs)/index.tsx` and `app/(tabs)/explore.tsx`.
+- Template components still exist in `src/components/` and can be pruned once replaced.
 
 ## Commands
 - Install: `npm install`
