@@ -1,98 +1,174 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import {
+  Appbar,
+  Avatar,
+  Button,
+  Card,
+  Chip,
+  Divider,
+  List,
+  Surface,
+  Text,
+  useTheme,
+} from 'react-native-paper';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+const upcomingEvent = {
+  title: 'Tuesday Night Commander',
+  pod: 'Northside Magic Pod',
+  time: 'Tonight · 7:00–10:30 PM',
+  location: 'Griffon Games',
+  address: '2433 Ashland Ave',
+};
+
+const arrivalBoard = [
+  { name: 'Steph', status: 'Arrived', eta: 'Here' },
+  { name: 'Ravi', status: 'On the way', eta: '8 min' },
+  { name: 'Jules', status: 'Running late', eta: '18 min' },
+  { name: 'Maya', status: 'Not sure', eta: '—' },
+];
+
+const checklist = [
+  { label: 'Commander decks', detail: '3 confirmed' },
+  { label: 'Snacks', detail: 'Maya bringing' },
+  { label: 'Spare sleeves', detail: 'Need 1 pack' },
+];
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const theme = useTheme();
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  return (
+    <View style={styles.screen}>
+      <Appbar.Header elevated>
+        <Appbar.Content title="Gatherer" subtitle="Your next meet-up" />
+        <Appbar.Action icon="bell-outline" onPress={() => undefined} />
+        <Appbar.Action icon="account-circle" onPress={() => undefined} />
+      </Appbar.Header>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text variant="titleLarge">Next gather</Text>
+        <Card mode="outlined" style={styles.card}>
+          <Card.Title
+            title={upcomingEvent.title}
+            subtitle={upcomingEvent.pod}
+            left={(props) => <Avatar.Text {...props} label="GN" />}
+          />
+          <Card.Content>
+            <List.Item
+              title={upcomingEvent.time}
+              description={`${upcomingEvent.location} · ${upcomingEvent.address}`}
+              left={(props) => <List.Icon {...props} icon="calendar-clock" />}
+            />
+          </Card.Content>
+          <Card.Actions style={styles.cardActions}>
+            <Button mode="outlined" onPress={() => undefined}>
+              Can&apos;t make it
+            </Button>
+            <Button mode="contained" onPress={() => undefined}>
+              I&apos;m in
+            </Button>
+          </Card.Actions>
+        </Card>
+
+        <Surface elevation={1} style={styles.surface}>
+          <View style={styles.sectionHeader}>
+            <Text variant="titleMedium">Arrival board</Text>
+            <Chip compact mode="outlined" textStyle={{ color: theme.colors.onSurfaceVariant }}>
+              Live ETA
+            </Chip>
+          </View>
+          <Divider style={styles.divider} />
+          {arrivalBoard.map((member) => (
+            <View key={member.name} style={styles.arrivalRow}>
+              <Avatar.Text size={36} label={member.name.slice(0, 2).toUpperCase()} />
+              <View style={styles.arrivalMeta}>
+                <Text variant="bodyLarge">{member.name}</Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                  {member.status}
+                </Text>
+              </View>
+              <Chip compact mode="outlined">
+                {member.eta}
+              </Chip>
+            </View>
+          ))}
+        </Surface>
+
+        <Surface elevation={1} style={styles.surface}>
+          <Text variant="titleMedium">Checklist</Text>
+          <Text variant="bodySmall" style={styles.sectionCaption}>
+            Shared prep for tonight&apos;s session.
+          </Text>
+          {checklist.map((item) => (
+            <List.Item
+              key={item.label}
+              title={item.label}
+              description={item.detail}
+              left={(props) => <List.Icon {...props} icon="checkbox-blank-circle-outline" />}
+            />
+          ))}
+          <Button mode="text" onPress={() => undefined}>
+            Update checklist
+          </Button>
+        </Surface>
+
+        <Surface elevation={1} style={styles.surface}>
+          <Text variant="titleMedium">Quick actions</Text>
+          <View style={styles.actions}>
+            <Button icon="plus" mode="contained" onPress={() => undefined}>
+              Create event
+            </Button>
+            <Button icon="link-variant" mode="outlined" onPress={() => undefined}>
+              Share invite
+            </Button>
+          </View>
+        </Surface>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  screen: {
+    flex: 1,
+  },
+  content: {
+    padding: 20,
+    gap: 20,
+  },
+  card: {
+    borderRadius: 16,
+  },
+  cardActions: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  surface: {
+    padding: 16,
+    borderRadius: 16,
+    gap: 12,
+  },
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  divider: {
+    marginTop: 4,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  arrivalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  arrivalMeta: {
+    flex: 1,
+  },
+  sectionCaption: {
+    opacity: 0.7,
+  },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
   },
 });
