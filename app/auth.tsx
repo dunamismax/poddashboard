@@ -2,18 +2,10 @@ import { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
-import * as WebBrowser from 'expo-web-browser';
 import { Appbar, Button, HelperText, Surface, Text, TextInput, useTheme } from 'react-native-paper';
 
 import { useSupabaseSession } from '@/hooks/use-supabase-session';
 import { supabase } from '@/lib/supabase';
-
-WebBrowser.maybeCompleteAuthSession();
-
-const oauthProviders = [
-  { id: 'github', label: 'GitHub' },
-  { id: 'google', label: 'Google' },
-] as const;
 
 export default function AuthScreen() {
   const router = useRouter();
@@ -45,34 +37,6 @@ export default function AuthScreen() {
     setIsSubmitting(false);
   };
 
-  const handleOAuth = async (provider: (typeof oauthProviders)[number]['id']) => {
-    setIsSubmitting(true);
-    setStatus(null);
-
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo,
-        skipBrowserRedirect: true,
-      },
-    });
-
-    if (error) {
-      setStatus(error.message);
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (data?.url) {
-      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-      if (result.type === 'success' && result.url) {
-        await supabase.auth.getSession();
-      }
-    }
-
-    setIsSubmitting(false);
-  };
-
   const handleSignOut = async () => {
     setIsSubmitting(true);
     setStatus(null);
@@ -87,7 +51,7 @@ export default function AuthScreen() {
     <View style={styles.screen}>
       <Appbar.Header elevated>
         <Appbar.BackAction onPress={() => router.back()} />
-        <Appbar.Content title="Sign in" subtitle="Magic link or OAuth" />
+        <Appbar.Content title="Sign in" subtitle="Magic link only" />
       </Appbar.Header>
       <KeyboardAvoidingView
         style={styles.keyboard}
@@ -120,30 +84,15 @@ export default function AuthScreen() {
           </Surface>
 
           <Surface elevation={1} style={styles.surface}>
-            <Text variant="titleMedium">OAuth</Text>
-            <Text variant="bodySmall" style={styles.caption}>
-              Use a connected account to sign in instantly.
-            </Text>
-            <View style={styles.oauthButtons}>
-              {oauthProviders.map((provider) => (
-                <Button
-                  key={provider.id}
-                  mode="outlined"
-                  onPress={() => handleOAuth(provider.id)}
-                  disabled={isSubmitting || isLoading}>
-                  Continue with {provider.label}
-                </Button>
-              ))}
-            </View>
-          </Surface>
-
-          <Surface elevation={1} style={styles.surface}>
             <Text variant="titleMedium">Session</Text>
             {isLoading ? (
               <Text variant="bodyMedium">Checking session...</Text>
             ) : user ? (
               <>
                 <Text variant="bodyMedium">Signed in as {user.email ?? 'Unknown email'}.</Text>
+                <Button mode="outlined" onPress={() => router.push('/profile')}>
+                  Edit profile
+                </Button>
                 <Button mode="contained" onPress={handleSignOut} disabled={isSubmitting}>
                   Sign out
                 </Button>
@@ -184,8 +133,5 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: 'transparent',
-  },
-  oauthButtons: {
-    gap: 12,
   },
 });

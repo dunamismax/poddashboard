@@ -108,10 +108,11 @@ export default function HomeScreen() {
 
   const arrivalBoard = (attendanceQuery.data ?? []).map((member) => {
     const profile = profileById.get(member.user_id);
+    const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ');
     const displayName =
       member.user_id === user?.id
         ? 'You'
-        : profile?.display_name || profile?.full_name || profile?.email?.split('@')[0];
+        : profile?.display_name || fullName || profile?.email?.split('@')[0];
 
     return {
       name: displayName ?? formatMemberLabel(member.user_id),
@@ -167,7 +168,10 @@ export default function HomeScreen() {
       <Appbar.Header elevated>
         <Appbar.Content title="Gatherer" subtitle="Your next meet-up" />
         <Appbar.Action icon="bell-outline" onPress={() => undefined} />
-        <Appbar.Action icon="account-circle" onPress={() => router.push('/auth')} />
+        <Appbar.Action
+          icon="account-circle"
+          onPress={() => router.push(user ? '/profile' : '/auth')}
+        />
       </Appbar.Header>
       <ScrollView contentContainerStyle={styles.content}>
         <Text variant="titleLarge">Next gather</Text>
@@ -206,6 +210,12 @@ export default function HomeScreen() {
               disabled={!canRespond || isUpdating}
               onPress={() => handleRsvp('yes')}>
               I&apos;m in
+            </Button>
+            <Button
+              mode="text"
+              disabled={!nextEvent}
+              onPress={() => nextEvent && router.push(`/event/${nextEvent.id}`)}>
+              View details
             </Button>
           </Card.Actions>
         </Card>
@@ -276,7 +286,10 @@ export default function HomeScreen() {
               />
             ))
           )}
-          <Button mode="text" disabled={!canRespond || isUpdating} onPress={() => undefined}>
+          <Button
+            mode="text"
+            disabled={!nextEvent}
+            onPress={() => nextEvent && router.push(`/event/${nextEvent.id}`)}>
             Manage checklist
           </Button>
         </Surface>
@@ -290,8 +303,8 @@ export default function HomeScreen() {
             <Button icon="account-group" mode="outlined" onPress={() => router.push('/create-pod')}>
               Create pod
             </Button>
-            <Button icon="link-variant" mode="outlined" onPress={() => undefined}>
-              Share invite
+            <Button icon="email-outline" mode="outlined" onPress={() => router.push('/invites')}>
+              Pending invites
             </Button>
           </View>
           {actionMessage ? (

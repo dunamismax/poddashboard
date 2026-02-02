@@ -10,9 +10,15 @@ export type PodSummary = {
   role: 'owner' | 'admin' | 'member';
 };
 
+export type PodMember = {
+  user_id: string;
+  role: PodSummary['role'];
+};
+
 const podKeys = {
   all: ['pods'] as const,
   byUser: (userId: string) => [...podKeys.all, 'by-user', userId] as const,
+  members: (podId: string) => [...podKeys.all, 'members', podId] as const,
 };
 
 type PodMembershipRow = {
@@ -40,6 +46,21 @@ async function fetchPodsByUser(userId: string): Promise<PodSummary[]> {
   return (data as PodMembershipRow[])
     .map((row) => (row.pod ? { ...row.pod, role: row.role } : null))
     .filter((row): row is PodSummary => Boolean(row));
+}
+
+async function fetchPodMembers(podId: string): Promise<PodMember[]> {
+  const { data, error } = await supabase
+    .from('pod_memberships')
+    .select('user_id,role')
+    .eq('pod_id', podId)
+    .eq('is_active', true)
+    .order('joined_at', { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []) as PodMember[];
 }
 
 type CreatePodInput = {
@@ -85,6 +106,15 @@ export function usePodsByUser(userId?: string) {
     queryFn: () => fetchPodsByUser(userId ?? ''),
     enabled: Boolean(userId),
     staleTime: 60_000,
+  });
+}
+
+export function usePodMembers(podId?: string) {
+  return useQuery({
+    queryKey: podKeys.members(podId ?? 'unknown'),
+    queryFn: () => fetchPodMembers(podId ?? ''),
+    enabled: Boolean(podId),
+    staleTime: 30_000,
   });
 }
 

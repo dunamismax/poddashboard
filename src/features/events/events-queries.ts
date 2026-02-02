@@ -11,6 +11,14 @@ export type EventSummary = {
   location_text: string | null;
 };
 
+export type EventDetail = EventSummary & {
+  description: string | null;
+  pod?: {
+    id: string;
+    name: string;
+  } | null;
+};
+
 export type EventAttendanceRow = {
   id: string;
   user_id: string;
@@ -32,6 +40,7 @@ export type ChecklistItem = {
 const eventKeys = {
   all: ['events'] as const,
   upcoming: (podIds: string[]) => [...eventKeys.all, 'upcoming', podIds] as const,
+  byId: (eventId: string) => [...eventKeys.all, 'by-id', eventId] as const,
   attendance: (eventId: string) => [...eventKeys.all, 'attendance', eventId] as const,
   checklist: (eventId: string) => [...eventKeys.all, 'checklist', eventId] as const,
 };
@@ -56,6 +65,22 @@ async function fetchUpcomingEvents(podIds: string[]): Promise<EventSummary[]> {
   }
 
   return (data ?? []) as EventSummary[];
+}
+
+async function fetchEventById(eventId: string): Promise<EventDetail | null> {
+  const { data, error } = await supabase
+    .from('events')
+    .select(
+      'id,pod_id,title,description,starts_at,ends_at,location_text,pod:pods(id,name)'
+    )
+    .eq('id', eventId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? null) as EventDetail | null;
 }
 
 async function fetchAttendance(eventId: string): Promise<EventAttendanceRow[]> {
@@ -102,10 +127,24 @@ type UpdateRsvpInput = {
   rsvp: EventAttendanceRow['rsvp'];
 };
 
+type UpdateArrivalInput = {
+  eventId: string;
+  userId: string;
+  arrival: EventAttendanceRow['arrival'];
+  etaMinutes?: number | null;
+};
+
 type UpdateChecklistItemInput = {
   eventId: string;
   itemId: string;
   state: ChecklistItem['state'];
+  note?: string | null;
+};
+
+type CreateChecklistItemInput = {
+  eventId: string;
+  userId: string;
+  label: string;
   note?: string | null;
 };
 
@@ -127,6 +166,25 @@ async function updateRsvp({ eventId, userId, rsvp }: UpdateRsvpInput) {
   }
 }
 
+async function updateArrival({ eventId, userId, arrival, etaMinutes }: UpdateArrivalInput) {
+  const { error } = await supabase
+    .from('event_attendance')
+    .upsert(
+      {
+        event_id: eventId,
+        user_id: userId,
+        arrival,
+        eta_minutes: etaMinutes ?? null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'event_id,user_id' }
+    );
+
+  if (error) {
+    throw error;
+  }
+}
+
 async function updateChecklistItem({ itemId, state, note }: UpdateChecklistItemInput) {
   const { error } = await supabase
     .from('event_checklist_items')
@@ -136,6 +194,20 @@ async function updateChecklistItem({ itemId, state, note }: UpdateChecklistItemI
       updated_at: new Date().toISOString(),
     })
     .eq('id', itemId);
+
+  if (error) {
+    throw error;
+  }
+}
+
+async function createChecklistItem({ eventId, userId, label, note }: CreateChecklistItemInput) {
+  const { error } = await supabase.from('event_checklist_items').insert({
+    event_id: eventId,
+    label,
+    note: note ?? null,
+    state: 'open',
+    created_by: userId,
+  });
 
   if (error) {
     throw error;
@@ -183,6 +255,15 @@ export function useUpcomingEvents(podIds: string[]) {
   });
 }
 
+export function useEventById(eventId?: string) {
+  return useQuery({
+    queryKey: eventKeys.byId(eventId ?? 'unknown'),
+    queryFn: () => fetchEventById(eventId ?? ''),
+    enabled: Boolean(eventId),
+    staleTime: 30_000,
+  });
+}
+
 export function useEventAttendance(eventId?: string) {
   return useQuery({
     queryKey: eventKeys.attendance(eventId ?? 'unknown'),
@@ -212,11 +293,33 @@ export function useUpdateRsvp() {
   });
 }
 
+export function useUpdateArrival() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateArrival,
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: eventKeys.attendance(variables.eventId) });
+    },
+  });
+}
+
 export function useUpdateChecklistItem() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: updateChecklistItem,
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: eventKeys.checklist(variables.eventId) });
+    },
+  });
+}
+
+export function useCreateChecklistItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createChecklistItem,
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: eventKeys.checklist(variables.eventId) });
     },

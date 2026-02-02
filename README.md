@@ -4,7 +4,7 @@ Gatherer is a lightweight, privacy-first coordination app for small groups who g
 
 ## Project next step
 
-Auth UI, create pod/event flows, and RSVP/checklist mutations are now wired. Next: add invite flow, profile creation on sign-in, and richer event/pod detail screens (RSVP/arrival/checklist editing).
+Auth UI, create pod/event flows, and RSVP/checklist mutations are now wired. Next: realtime updates and notification delivery for arrivals and schedule changes.
 
 ## What it is
 
@@ -24,19 +24,20 @@ This is not a social network. It is social infrastructure for recurring, real-li
 
 - Home screen backed by Supabase (next event, arrival board, checklist, quick actions)
 - Pods overview backed by Supabase (pods list + upcoming events)
-- Auth screens (magic link + OAuth) with callback handling
+- Auth screens (magic link only) with callback handling
 - Create pod + create event flows (Supabase inserts)
 - RSVP + checklist updates (mutations + query invalidation)
+- Pod invites + pending invites flow
+- Profile creation on sign-in + profile editing
+- Pod + event detail screens with RSVP/arrival/checklist editing
 - Dark theme via React Native Paper
 - Expo Router tab navigation
 - Supabase Query hooks for pods, events, attendance, checklist
 
 ## Roadmap (near-term)
 
-- Pod detail screens (members, roles, recurring schedule)
-- Event detail flow (arrival status, checklist editing, attendance history)
-- Invite flow (email and/or code), including admin-only policies
-- Profile creation on sign-in (display names, avatars)
+- Recurring pod schedules and roles management
+- Event history and richer attendance analytics
 - Realtime updates for arrivals and status changes
 - Notifications and reminders
 
@@ -55,7 +56,7 @@ This is not a social network. It is social infrastructure for recurring, real-li
 
 - Supabase
   - Postgres (pods, events, membership, invites, permissions)
-  - Auth (magic links, OAuth)
+  - Auth (magic links only)
   - Realtime (presence, event updates, status changes)
   - Edge Functions (ETAs, scheduled reminders, server-side validation)
   - Storage (avatars, optional pod images)
@@ -98,7 +99,8 @@ If you run `npm run android`, ensure the Android SDK is installed and `ANDROID_H
 
 ## Supabase setup
 
-See `docs/supabase-setup.md` for the recommended database schema and RLS policies for a fresh project.
+Use `scripts/supabase-setup.sql` in the Supabase SQL editor to bootstrap or update the schema, RLS, and policies in one run (idempotent, non-destructive).
+`docs/supabase-setup.md` is the human-readable source; update it first, then regenerate `scripts/supabase-setup.sql` when schema or policy changes are made.
 
 ## Contributing
 

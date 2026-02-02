@@ -20,6 +20,7 @@ It focuses on event-scoped planning, arrival, and real-time coordination.
 
 - app/ : Expo Router routes
 - src/ : shared code and assets
+  - scripts/ : setup scripts (includes Supabase bootstrap SQL)
   - src/lib/ : client helpers (env, Supabase, Query)
   - src/theme/ : theme tokens and Paper theme
   - src/components/ : shared UI
@@ -43,6 +44,7 @@ It focuses on event-scoped planning, arrival, and real-time coordination.
 - Query client: `src/lib/queryClient.ts`
 - Env validation: `src/lib/env.ts`
 - Supabase session hook: `src/hooks/use-supabase-session.ts`
+- Supabase SQL bootstrap: `scripts/supabase-setup.sql` (run in Supabase SQL editor; idempotent)
 - Supabase query hooks:
   - Pods: `src/features/pods/pods-queries.ts`
   - Events/attendance/checklist: `src/features/events/events-queries.ts`
@@ -66,6 +68,7 @@ It focuses on event-scoped planning, arrival, and real-time coordination.
 - Prefer feature modules under `src/features/` for domain logic.
 - Use Zod for input/env validation.
 - Use TanStack Query for data fetching and caching.
+- Update `docs/supabase-setup.md` first when schema/RLS changes, then keep `scripts/supabase-setup.sql` in sync.
 
 ## License
 

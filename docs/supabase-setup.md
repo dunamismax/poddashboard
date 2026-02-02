@@ -73,8 +73,13 @@ create table if not exists pods (
 create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   display_name text,
-  full_name text,
   email text,
+  first_name text,
+  last_name text,
+  phone text,
+  contact_email text,
+  contact_handle text,
+  contact_notes text,
   avatar_url text,
   updated_at timestamptz not null default now()
 );
@@ -136,7 +141,7 @@ create table if not exists pod_invites (
   invited_user_id uuid references auth.users(id) on delete set null,
   invited_by uuid not null references auth.users(id) on delete restrict,
   status invite_status not null default 'pending',
-  token text not null unique,
+  token text not null unique default encode(gen_random_uuid()::bytea, 'hex'),
   expires_at timestamptz,
   created_at timestamptz not null default now()
 );
@@ -223,9 +228,20 @@ for select using (
 create policy "pods_insert" on pods
 for insert with check (auth.uid() = created_by);
 
--- Profiles: authenticated users can read display names
+-- Profiles: pod members can read each other (and themselves)
 create policy "profiles_read" on profiles
-for select using (auth.role() = 'authenticated');
+for select using (
+  id = auth.uid()
+  or exists (
+    select 1
+    from pod_memberships self
+    join pod_memberships other on other.pod_id = self.pod_id
+    where self.user_id = auth.uid()
+      and self.is_active = true
+      and other.user_id = profiles.id
+      and other.is_active = true
+  )
+);
 
 -- Profiles: users can insert/update their own profile
 create policy "profiles_insert" on profiles
@@ -265,6 +281,21 @@ for insert with check (
       and m.user_id = auth.uid()
       and m.role in ('owner','admin')
   )
+);
+
+-- Memberships: invited users can accept into a pod
+create policy "memberships_insert_invited" on pod_memberships
+for insert with check (
+  exists (
+    select 1 from pod_invites
+    where pod_invites.pod_id = pod_memberships.pod_id
+      and pod_invites.status = 'pending'
+      and (
+        pod_invites.invited_user_id = auth.uid()
+        or pod_invites.invited_email = (auth.jwt() ->> 'email')
+      )
+  )
+  and pod_memberships.user_id = auth.uid()
 );
 
 -- Events: pod members can read
@@ -354,7 +385,7 @@ for update using (
   )
 );
 
--- Invites: only admins/owners can read/create
+-- Invites: admins/owners can read all; invitees can read their own
 create policy "invites_read" on pod_invites
 for select using (
   exists (
@@ -363,6 +394,8 @@ for select using (
       and pod_memberships.user_id = auth.uid()
       and pod_memberships.role in ('owner','admin')
   )
+  or pod_invites.invited_user_id = auth.uid()
+  or pod_invites.invited_email = (auth.jwt() ->> 'email')
 );
 
 create policy "invites_insert" on pod_invites
@@ -374,6 +407,13 @@ for insert with check (
       and pod_memberships.role in ('owner','admin')
   )
 );
+
+-- Invites: invitees can mark their invite accepted
+create policy "invites_update" on pod_invites
+for update using (
+  pod_invites.invited_user_id = auth.uid()
+  or pod_invites.invited_email = (auth.jwt() ->> 'email')
+);
 ```
 
 ## Notes
@@ -381,3 +421,4 @@ for insert with check (
 - This schema is intentionally minimal; you can extend with profiles, pod images, recurring templates, and richer permissions later.
 - For a new pod, insert into `pods`, then insert the creator into `pod_memberships` with role `owner`.
 - For events, insert into `events` and optionally pre-create `event_attendance` rows for members.
+- If your JWT claims do not include `email`, update the invite policies to match your auth configuration.

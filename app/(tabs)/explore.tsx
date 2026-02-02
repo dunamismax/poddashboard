@@ -56,8 +56,8 @@ export default function ExploreScreen() {
             <Button mode="contained" icon="plus" onPress={() => router.push('/create-pod')}>
               New pod
             </Button>
-            <Button mode="outlined" icon="qrcode-scan" onPress={() => undefined}>
-              Join with code
+            <Button mode="outlined" icon="email-outline" onPress={() => router.push('/invites')}>
+              Pending invites
             </Button>
           </Card.Actions>
         </Card>
@@ -79,6 +79,7 @@ export default function ExploreScreen() {
                   [pod.location_text, roleLabels[pod.role] ?? 'Member'].filter(Boolean).join(' · ')
                 }
                 left={(props) => <List.Icon {...props} icon="account-group" />}
+                onPress={() => router.push(`/pod/${pod.id}`)}
               />
             ))
           )}
@@ -101,6 +102,7 @@ export default function ExploreScreen() {
                   podNameById.get(event.pod_id) ?? 'Your pod'
                 }`}
                 left={(props) => <List.Icon {...props} icon="calendar-star" />}
+                onPress={() => router.push(`/event/${event.id}`)}
               />
             ))
           )}
