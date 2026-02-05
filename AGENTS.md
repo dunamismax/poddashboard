@@ -18,15 +18,17 @@ It focuses on event-scoped planning, arrival, and real-time coordination.
 
 ## Repo layout
 
-- app/ : Expo Router routes
-- src/ : shared code and assets
-  - scripts/ : setup scripts (includes Supabase bootstrap SQL)
-  - src/lib/ : client helpers (env, Supabase, Query)
-  - src/theme/ : theme tokens and Paper theme
-  - src/components/ : shared UI
-  - src/features/ : domain modules (pods, events, profiles)
-  - src/types/ : shared types (planned; not yet populated)
-  - src/assets/ : images and app icons
+- app/ : Expo Router routes and screens
+- src/ : shared client code
+  - src/lib/ : env, Supabase client, query client
+  - src/hooks/ : auth/session, push token registration, theme helpers
+  - src/theme/ : tokens and Paper theme
+  - src/components/ : shared UI components
+  - src/features/ : domain query/mutation modules
+  - src/assets/ : images and icons
+- scripts/ : project scripts, including `scripts/supabase-setup.sql` as schema/RLS source of truth
+- supabase/functions/ : Supabase Edge Functions (`notify-event`)
+- android/ : generated native Android project for `expo run:android`
 
 ## Environment
 
@@ -60,6 +62,7 @@ It focuses on event-scoped planning, arrival, and real-time coordination.
 - Auth screens: `app/auth.tsx`, `app/auth/callback.tsx`
 - Create flows: `app/create-pod.tsx`, `app/create-event.tsx`
 - Event detail/edit: `app/event/[id].tsx`, `app/event/edit/[id].tsx`
+- Event cancel flow + host controls: `app/event/edit/[id].tsx`, `src/features/events/events-queries.ts`
 - Notifications screen: `app/notifications.tsx`
 - Home and Pods tabs pull live data in `app/(tabs)/index.tsx` and `app/(tabs)/explore.tsx`.
 - Template components still exist in `src/components/` and can be pruned once replaced.

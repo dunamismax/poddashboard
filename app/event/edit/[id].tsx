@@ -13,7 +13,8 @@ import {
 } from 'react-native-paper';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
-import { useEventById, useUpdateEvent } from '@/features/events/events-queries';
+import { useCancelEvent, useEventById, useUpdateEvent } from '@/features/events/events-queries';
+import { usePodsByUser } from '@/features/pods/pods-queries';
 import { useSupabaseSession } from '@/hooks/use-supabase-session';
 
 function toInputDateTime(date: Date) {
@@ -52,8 +53,10 @@ export default function EditEventScreen() {
   const params = useLocalSearchParams();
   const eventId = typeof params.id === 'string' ? params.id : '';
   const { user, isLoading: authLoading } = useSupabaseSession();
+  const podsQuery = usePodsByUser(user?.id);
   const eventQuery = useEventById(eventId);
   const updateEvent = useUpdateEvent();
+  const cancelEvent = useCancelEvent();
   const [hasLoaded, setHasLoaded] = useState(false);
 
   const [title, setTitle] = useState('');
@@ -61,6 +64,7 @@ export default function EditEventScreen() {
   const [location, setLocation] = useState('');
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
+  const [cancelReason, setCancelReason] = useState('');
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -74,6 +78,7 @@ export default function EditEventScreen() {
     setEndsAt(
       eventQuery.data.ends_at ? toInputDateTime(new Date(eventQuery.data.ends_at)) : ''
     );
+    setCancelReason(eventQuery.data.cancel_reason ?? '');
     setHasLoaded(true);
   }, [eventQuery.data, hasLoaded]);
 
@@ -86,6 +91,16 @@ export default function EditEventScreen() {
     Boolean(endsAtIso && startsAtIso) && new Date(endsAtIso) < new Date(startsAtIso);
   const endsAtError = endsAtInvalid || endsAtBeforeStart;
   const isWeb = Platform.OS === 'web';
+  const podRole = useMemo(
+    () => (eventQuery.data ? (podsQuery.data ?? []).find((pod) => pod.id === eventQuery.data.pod_id)?.role : null),
+    [eventQuery.data, podsQuery.data]
+  );
+  const isCanceled = Boolean(eventQuery.data?.canceled_at);
+  const canManageEvent = Boolean(
+    user &&
+      eventQuery.data &&
+      (eventQuery.data.created_by === user.id || podRole === 'owner' || podRole === 'admin')
+  );
 
   const handleStartChange = (_event: DateTimePickerEvent, selectedDate?: Date) => {
     setShowStartPicker(false);
@@ -120,7 +135,7 @@ export default function EditEventScreen() {
   ]);
 
   const handleSubmit = async () => {
-    if (!user || !eventQuery.data || titleError || startsAtError || endsAtError) return;
+    if (!user || !eventQuery.data || !canManageEvent || titleError || startsAtError || endsAtError) return;
 
     const payload = {
       eventId: eventQuery.data.id,
@@ -160,7 +175,24 @@ export default function EditEventScreen() {
     }
   };
 
-  const isLoading = authLoading || eventQuery.isLoading;
+  const handleCancel = async () => {
+    if (!user || !eventQuery.data || !canManageEvent || isCanceled) return;
+    setStatus(null);
+
+    try {
+      await cancelEvent.mutateAsync({
+        eventId: eventQuery.data.id,
+        userId: user.id,
+        reason: normalizeText(cancelReason),
+      });
+      setStatus('Event canceled.');
+      router.replace(`/event/${eventQuery.data.id}`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Unable to cancel event.');
+    }
+  };
+
+  const isLoading = authLoading || eventQuery.isLoading || podsQuery.isLoading;
 
   return (
     <View style={styles.screen}>
@@ -177,6 +209,20 @@ export default function EditEventScreen() {
               <Text variant="bodyMedium">Loading event...</Text>
             ) : !eventQuery.data ? (
               <Text variant="bodyMedium">You don&apos;t have access to this event.</Text>
+            ) : !canManageEvent ? (
+              <Text variant="bodyMedium">
+                Only the event host or pod admins can edit or cancel this event.
+              </Text>
+            ) : isCanceled ? (
+              <>
+                <Text variant="titleMedium">This event has been canceled.</Text>
+                {eventQuery.data.cancel_reason ? (
+                  <Text variant="bodyMedium">Reason: {eventQuery.data.cancel_reason}</Text>
+                ) : null}
+                <Button mode="outlined" onPress={() => router.replace(`/event/${eventQuery.data.id}`)}>
+                  Back to event
+                </Button>
+              </>
             ) : (
               <>
                 <TextInput
@@ -287,6 +333,7 @@ export default function EditEventScreen() {
                   disabled={
                     !user ||
                     !eventQuery.data ||
+                    !canManageEvent ||
                     titleError ||
                     startsAtError ||
                     endsAtError ||
@@ -294,6 +341,24 @@ export default function EditEventScreen() {
                     changeCount === 0
                   }>
                   Save changes
+                </Button>
+                <HelperText type="info" visible>
+                  Host controls
+                </HelperText>
+                <TextInput
+                  mode="outlined"
+                  label="Cancellation reason (optional)"
+                  value={cancelReason}
+                  onChangeText={setCancelReason}
+                  multiline
+                  style={styles.input}
+                />
+                <Button
+                  mode="outlined"
+                  onPress={handleCancel}
+                  textColor={theme.colors.error}
+                  disabled={!user || !eventQuery.data || !canManageEvent || cancelEvent.isPending}>
+                  Cancel event
                 </Button>
                 {status ? (
                   <Text variant="bodySmall" style={{ color: theme.colors.primary }}>

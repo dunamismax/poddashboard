@@ -13,7 +13,11 @@ export type EventSummary = {
 };
 
 export type EventDetail = EventSummary & {
+  created_by: string;
   description: string | null;
+  canceled_at: string | null;
+  canceled_by: string | null;
+  cancel_reason: string | null;
   pod?: {
     id: string;
     name: string;
@@ -57,6 +61,7 @@ async function fetchUpcomingEvents(podIds: string[]): Promise<EventSummary[]> {
     .from('events')
     .select('id,pod_id,title,starts_at,ends_at,location_text')
     .in('pod_id', podIds)
+    .is('canceled_at', null)
     .gte('starts_at', new Date().toISOString())
     .order('starts_at', { ascending: true })
     .limit(10);
@@ -72,7 +77,7 @@ async function fetchEventById(eventId: string): Promise<EventDetail | null> {
   const { data, error } = await supabase
     .from('events')
     .select(
-      'id,pod_id,title,description,starts_at,ends_at,location_text,pod:pods(id,name)'
+      'id,pod_id,created_by,title,description,starts_at,ends_at,location_text,canceled_at,canceled_by,cancel_reason,pod:pods(id,name)'
     )
     .eq('id', eventId)
     .maybeSingle();
@@ -162,10 +167,11 @@ type CreateChecklistItemInput = {
 type NotifyEventInput = {
   eventId: string;
   actorId: string;
-  type: 'event_created' | 'schedule_changed' | 'arrival_update' | 'eta_update';
+  type: 'event_created' | 'schedule_changed' | 'arrival_update' | 'eta_update' | 'event_cancelled';
   arrival?: EventAttendanceRow['arrival'];
   etaMinutes?: number | null;
   changedFields?: string[];
+  cancelReason?: string | null;
 };
 
 async function notifyEvent(payload: NotifyEventInput) {
@@ -268,10 +274,20 @@ async function updateEvent({
     return;
   }
 
-  const { error } = await supabase.from('events').update(updates).eq('id', eventId);
+  const { data, error } = await supabase
+    .from('events')
+    .update(updates)
+    .eq('id', eventId)
+    .is('canceled_at', null)
+    .select('id')
+    .maybeSingle();
 
   if (error) {
     throw error;
+  }
+
+  if (!data) {
+    throw new Error('Event is already canceled or unavailable.');
   }
 }
 
@@ -303,6 +319,34 @@ async function createEvent({
   }
 
   return data.id;
+}
+
+type CancelEventInput = {
+  eventId: string;
+  userId: string;
+  reason?: string | null;
+};
+
+async function cancelEvent({ eventId, userId, reason }: CancelEventInput) {
+  const { data, error } = await supabase
+    .from('events')
+    .update({
+      canceled_at: new Date().toISOString(),
+      canceled_by: userId,
+      cancel_reason: reason ?? null,
+    })
+    .eq('id', eventId)
+    .is('canceled_at', null)
+    .select('id')
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
+    throw new Error('Event is already canceled or unavailable.');
+  }
 }
 
 export function useUpcomingEvents(podIds: string[]) {
@@ -477,6 +521,24 @@ export function useUpdateEvent() {
           changedFields,
         });
       }
+    },
+  });
+}
+
+export function useCancelEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: cancelEvent,
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: eventKeys.byId(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: eventKeys.all });
+      void notifyEvent({
+        eventId: variables.eventId,
+        actorId: variables.userId,
+        type: 'event_cancelled',
+        cancelReason: variables.reason ?? null,
+      });
     },
   });
 }

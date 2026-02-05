@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { AppState, Platform } from 'react-native';
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 
@@ -19,10 +19,27 @@ function getProjectId() {
 
 export function useRegisterPushToken(userId?: string | null) {
   const lastRegisteredUser = useRef<string | null>(null);
+  const [appActiveVersion, setAppActiveVersion] = useState(0);
 
   useEffect(() => {
-    if (!userId || userId === lastRegisteredUser.current) return;
-    lastRegisteredUser.current = userId;
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        setAppActiveVersion((value) => value + 1);
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!userId) {
+      lastRegisteredUser.current = null;
+      return;
+    }
+
+    if (userId === lastRegisteredUser.current) return;
 
     let isMounted = true;
 
@@ -57,6 +74,9 @@ export function useRegisterPushToken(userId?: string | null) {
           { onConflict: 'user_id,token' }
         );
 
+        if (!isMounted) return;
+        lastRegisteredUser.current = userId;
+
         if (Platform.OS === 'android') {
           await Notifications.setNotificationChannelAsync('default', {
             name: 'default',
@@ -73,5 +93,5 @@ export function useRegisterPushToken(userId?: string | null) {
     return () => {
       isMounted = false;
     };
-  }, [userId]);
+  }, [appActiveVersion, userId]);
 }

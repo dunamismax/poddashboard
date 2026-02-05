@@ -24,6 +24,7 @@ function formatTimestamp(value: string) {
 function iconForType(type: string) {
   if (type === 'event_created') return 'calendar-plus';
   if (type === 'schedule_changed') return 'calendar-clock';
+  if (type === 'event_cancelled') return 'calendar-remove';
   if (type === 'arrival_update') return 'map-marker-check';
   if (type === 'eta_update') return 'timer-outline';
   return 'bell-outline';

@@ -25,6 +25,7 @@ import {
   useUpdateChecklistItem,
   useUpdateRsvp,
 } from '@/features/events/events-queries';
+import { usePodsByUser } from '@/features/pods/pods-queries';
 import { useProfilesByIds } from '@/features/profiles/profiles-queries';
 import { useSupabaseSession } from '@/hooks/use-supabase-session';
 
@@ -78,6 +79,7 @@ export default function EventDetailScreen() {
   const { user, isLoading: authLoading } = useSupabaseSession();
 
   const eventQuery = useEventById(eventId);
+  const podsQuery = usePodsByUser(user?.id);
   const attendanceQuery = useEventAttendance(eventId);
   const checklistQuery = useEventChecklist(eventId);
   useEventRealtime(eventId);
@@ -105,13 +107,23 @@ export default function EventDetailScreen() {
   useEffect(() => {
     if (!currentAttendance) return;
     setEtaInput(currentAttendance.eta_minutes ? String(currentAttendance.eta_minutes) : '');
-  }, [currentAttendance?.eta_minutes]);
+  }, [currentAttendance]);
 
   const etaMinutes = etaInput.trim() ? Number(etaInput) : null;
   const etaError = etaInput.trim().length > 0 && (Number.isNaN(etaMinutes) || etaMinutes! < 0);
+  const podRole = useMemo(
+    () => (eventQuery.data ? (podsQuery.data ?? []).find((pod) => pod.id === eventQuery.data.pod_id)?.role : null),
+    [eventQuery.data, podsQuery.data]
+  );
+  const isCanceled = Boolean(eventQuery.data?.canceled_at);
+  const canManageEvent = Boolean(
+    user &&
+      eventQuery.data &&
+      (eventQuery.data.created_by === user.id || podRole === 'owner' || podRole === 'admin')
+  );
 
-  const isLoading = authLoading || eventQuery.isLoading;
-  const canInteract = Boolean(user && eventQuery.data);
+  const isLoading = authLoading || eventQuery.isLoading || podsQuery.isLoading;
+  const canInteract = Boolean(user && eventQuery.data && !isCanceled);
 
   const arrivalBoard = (attendanceQuery.data ?? []).map((member) => {
     const profile = profileById.get(member.user_id);
@@ -156,7 +168,7 @@ export default function EventDetailScreen() {
   };
 
   const handleArrival = (arrival: 'not_sure' | 'on_the_way' | 'arrived' | 'late') => {
-    if (!user || !eventQuery.data || etaError) return;
+    if (!canInteract || !user || !eventQuery.data || etaError) return;
     setStatus(null);
     updateArrival.mutate(
       {
@@ -204,7 +216,7 @@ export default function EventDetailScreen() {
       <Appbar.Header elevated>
         <Appbar.BackAction onPress={() => router.back()} />
         <Appbar.Content title={eventQuery.data?.title ?? 'Event'} subtitle="Details & RSVP" />
-        {eventQuery.data ? (
+        {eventQuery.data && canManageEvent ? (
           <Appbar.Action
             icon="pencil"
             onPress={() => router.push(`/event/edit/${eventQuery.data?.id}`)}
@@ -226,6 +238,12 @@ export default function EventDetailScreen() {
               <Text variant="bodySmall" style={styles.caption}>
                 {eventQuery.data.location_text ?? 'Location TBD'}
               </Text>
+              {isCanceled ? (
+                <Text variant="bodySmall" style={{ color: theme.colors.error }}>
+                  Canceled
+                  {eventQuery.data.cancel_reason ? `: ${eventQuery.data.cancel_reason}` : '.'}
+                </Text>
+              ) : null}
               {eventQuery.data.description ? (
                 <Text variant="bodyMedium">{eventQuery.data.description}</Text>
               ) : null}
@@ -276,6 +294,7 @@ export default function EventDetailScreen() {
               <Chip
                 key={value}
                 selected={currentAttendance?.arrival === value}
+                disabled={!canInteract}
                 onPress={() => handleArrival(value as ArrivalKey)}
                 style={styles.chip}>
                 {label}

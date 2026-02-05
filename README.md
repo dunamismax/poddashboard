@@ -5,9 +5,8 @@ Gatherer is a lightweight, privacy-first coordination app for small groups who g
 ## Project next step
 
 - Add recurring pod schedules and role management UI.
-- Add event cancel flows and host controls.
 - Add notification preferences and quiet hours.
-- Add opt-in reminders and ETA/location sharing controls.
+- Add event history and richer attendance analytics.
 
 ## What it is
 
@@ -33,8 +32,8 @@ This is not a social network. It is social infrastructure for recurring, real-li
 - Pod invites + pending invites flow (invite tokens are generated server-side)
 - Profile creation on sign-in + profile editing
 - Pod + event detail screens with RSVP/arrival/checklist editing
-- Event edit screen with schedule change notifications
-- In-app notifications + push notifications for arrivals and schedule changes
+- Event edit screen with host controls (including cancel flow)
+- In-app notifications + push notifications for arrivals, schedule changes, and cancellations
 - Dark theme via React Native Paper
 - Expo Router tab navigation
 - Supabase Query hooks for pods, events, attendance, checklist
@@ -44,7 +43,6 @@ This is not a social network. It is social infrastructure for recurring, real-li
 - Recurring pod schedules and roles management
 - Event history and richer attendance analytics
 - Notification preferences and quiet hours
-- Event cancel flows and host controls
 - Presence/arrival timeline refinements
 
 ## Tech stack (current)
@@ -64,18 +62,16 @@ This is not a social network. It is social infrastructure for recurring, real-li
   - Postgres (pods, events, membership, invites, permissions)
   - Auth (magic links only)
   - Realtime (presence, event updates, status changes)
-  - Edge Functions (ETAs, scheduled reminders, server-side validation)
+  - Edge Functions (`notify-event` for event/arrival notifications)
   - Storage (avatars, optional pod images)
 
-### Infra
+### Infra (planned/integration-ready)
 
-- Cloudflare (DNS + edge caching)
-- Sentry (crash reporting)
-- PostHog (analytics, privacy-friendly)
+- No production infra integrations are wired in this repo yet.
 
 ## Status
 
-UI scaffolding in place. Backend wiring and transactional safety are the current focus.
+Core MVP flows are wired: auth, pods, events, invites, profiles, and notifications.
 
 ## Getting started
 
@@ -111,7 +107,7 @@ It also defines transactional RPCs for create pod + owner membership and accept 
 
 ### Notifications
 
-Notifications are delivered via an Edge Function (`notify-event`) and stored in the `notifications` table. Push tokens are stored in `user_push_tokens`. To enable push + in-app notifications:
+Notifications are delivered via the Edge Function `notify-event` and stored in `notifications`. Push tokens are stored in `user_push_tokens`. To enable push + in-app notifications:
 
 1. Deploy the Edge Function and set the `SUPABASE_SERVICE_ROLE_KEY` secret in Supabase Edge Functions.
 2. Install `expo-notifications` in the client app.
