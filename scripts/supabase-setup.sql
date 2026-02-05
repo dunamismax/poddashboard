@@ -111,6 +111,9 @@ create table if not exists events (
   starts_at timestamptz not null,
   ends_at timestamptz,
   location_text text,
+  canceled_at timestamptz,
+  canceled_by uuid references auth.users(id) on delete set null,
+  cancel_reason text,
   created_by uuid not null references auth.users(id) on delete restrict,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -194,6 +197,9 @@ ALTER TABLE pods ADD COLUMN IF NOT EXISTS updated_at timestamptz not null defaul
 ALTER TABLE events ADD COLUMN IF NOT EXISTS description text;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS ends_at timestamptz;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS location_text text;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS canceled_at timestamptz;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS canceled_by uuid references auth.users(id) on delete set null;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS cancel_reason text;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS updated_at timestamptz not null default now();
 
 ALTER TABLE event_attendance ADD COLUMN IF NOT EXISTS eta_minutes integer;
@@ -242,6 +248,7 @@ create index if not exists idx_pod_memberships_user on pod_memberships(user_id);
 create index if not exists idx_profiles_display_name on profiles(display_name);
 create index if not exists idx_events_pod on events(pod_id);
 create index if not exists idx_events_starts_at on events(starts_at);
+create index if not exists idx_events_canceled_at on events(canceled_at);
 create index if not exists idx_event_attendance_event on event_attendance(event_id);
 create index if not exists idx_event_attendance_user on event_attendance(user_id);
 create index if not exists idx_checklist_event on event_checklist_items(event_id);

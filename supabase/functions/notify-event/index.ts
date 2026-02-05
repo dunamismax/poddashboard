@@ -5,11 +5,25 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.93.3";
 type NotifyEventPayload = {
   eventId: string;
   actorId: string;
-  type: "event_created" | "schedule_changed" | "arrival_update" | "eta_update";
+  type:
+    | "event_created"
+    | "schedule_changed"
+    | "arrival_update"
+    | "eta_update"
+    | "event_cancelled";
   arrival?: "not_sure" | "on_the_way" | "arrived" | "late";
   etaMinutes?: number | null;
   changedFields?: string[];
+  cancelReason?: string | null;
 };
+
+const allowedNotifyTypes: NotifyEventPayload["type"][] = [
+  "event_created",
+  "schedule_changed",
+  "arrival_update",
+  "eta_update",
+  "event_cancelled",
+];
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -102,6 +116,13 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (!allowedNotifyTypes.includes(payload.type)) {
+      return new Response(JSON.stringify({ error: "Invalid notification type." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (payload.actorId !== user.id) {
       return new Response(JSON.stringify({ error: "Actor mismatch." }), {
         status: 403,
@@ -122,6 +143,21 @@ Deno.serve(async (req) => {
       });
     }
 
+    const { data: membershipRow, error: membershipError } = await supabaseAdmin
+      .from("pod_memberships")
+      .select("user_id")
+      .eq("pod_id", eventRow.pod_id)
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (membershipError || !membershipRow) {
+      return new Response(JSON.stringify({ error: "Forbidden." }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { data: profileRow } = await supabaseAdmin
       .from("profiles")
       .select("display_name,first_name,last_name,email")
@@ -132,7 +168,7 @@ Deno.serve(async (req) => {
 
     let recipientIds: string[] = [];
 
-    if (payload.type === "event_created") {
+    if (payload.type === "event_created" || payload.type === "event_cancelled") {
       const { data: members } = await supabaseAdmin
         .from("pod_memberships")
         .select("user_id")
@@ -182,6 +218,9 @@ Deno.serve(async (req) => {
       body = payload.etaMinutes
         ? `${payload.etaMinutes} min to ${eventRow.title}`
         : `${actorName} updated their ETA.`;
+    } else if (payload.type === "event_cancelled") {
+      title = `Canceled: ${eventRow.title}`;
+      body = payload.cancelReason ? payload.cancelReason : `${actorName} canceled this event.`;
     } else {
       title = `${actorName} is ${buildArrivalLabel(payload.arrival)}`;
       body = payload.etaMinutes
@@ -201,6 +240,7 @@ Deno.serve(async (req) => {
         arrival: payload.arrival ?? null,
         eta_minutes: payload.etaMinutes ?? null,
         changed_fields: payload.changedFields ?? [],
+        cancel_reason: payload.cancelReason ?? null,
       },
     }));
 
