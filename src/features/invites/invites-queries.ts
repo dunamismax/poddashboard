@@ -18,6 +18,21 @@ export type PodInvite = {
   } | null;
 };
 
+type PodInviteRow = Omit<PodInvite, 'pod'> & {
+  pod:
+    | {
+        id: string;
+        name: string;
+        location_text: string | null;
+      }
+    | {
+        id: string;
+        name: string;
+        location_text: string | null;
+      }[]
+    | null;
+};
+
 const inviteKeys = {
   all: ['invites'] as const,
   byUser: (userId: string, email: string | null) =>
@@ -47,7 +62,10 @@ async function fetchInvitesForUser(userId: string, email: string | null): Promis
     throw error;
   }
 
-  return (data ?? []) as PodInvite[];
+  return ((data ?? []) as PodInviteRow[]).map((row) => ({
+    ...row,
+    pod: Array.isArray(row.pod) ? row.pod[0] ?? null : row.pod,
+  }));
 }
 
 async function fetchInvitesForPod(podId: string): Promise<PodInvite[]> {

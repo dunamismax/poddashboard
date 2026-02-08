@@ -1,17 +1,32 @@
 {
-  "extends": "expo/tsconfig.base",
   "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
     "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./src/*"
       ]
-    }
+    },
+    "types": ["vite/client"]
   },
   "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "src/main.tsx",
+    "src/App.tsx",
+    "src/lib/**/*.ts",
+    "src/features/**/*.ts",
+    "src/hooks/use-supabase-session.ts",
+    "src/web/**/*.tsx",
+    "src/vite-env.d.ts",
+    "vite.config.ts"
   ]
 }
