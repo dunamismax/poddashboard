@@ -4,7 +4,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { ensureProfile } from '@/features/profiles/profile-service';
 
-type SessionState = {
+export type SessionState = {
   session: Session | null;
   user: User | null;
   isLoading: boolean;

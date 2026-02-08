@@ -23,12 +23,20 @@ const podKeys = {
 
 type PodMembershipRow = {
   role: PodSummary['role'];
-  pod: {
-    id: string;
-    name: string;
-    description: string | null;
-    location_text: string | null;
-  } | null;
+  pod:
+    | {
+        id: string;
+        name: string;
+        description: string | null;
+        location_text: string | null;
+      }
+    | {
+        id: string;
+        name: string;
+        description: string | null;
+        location_text: string | null;
+      }[]
+    | null;
 };
 
 async function fetchPodsByUser(userId: string): Promise<PodSummary[]> {
@@ -44,7 +52,10 @@ async function fetchPodsByUser(userId: string): Promise<PodSummary[]> {
   }
 
   return (data as PodMembershipRow[])
-    .map((row) => (row.pod ? { ...row.pod, role: row.role } : null))
+    .map((row) => {
+      const pod = Array.isArray(row.pod) ? row.pod[0] ?? null : row.pod;
+      return pod ? { ...pod, role: row.role } : null;
+    })
     .filter((row): row is PodSummary => Boolean(row));
 }
 
