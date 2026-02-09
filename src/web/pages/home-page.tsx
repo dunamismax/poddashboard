@@ -91,7 +91,7 @@ export function HomePage() {
           <p className="muted">
             {nextEvent
               ? `${podNameById.get(nextEvent.pod_id) ?? 'Your pod'} · ${formatEventTime(nextEvent.starts_at, nextEvent.ends_at)}`
-              : 'Create a pod event to prep your next MTG night.'}
+              : 'Create a pod event to prep your next Magic night.'}
           </p>
           <div className="actions">
             <Link className="btn btn-primary" to="/create-event">
