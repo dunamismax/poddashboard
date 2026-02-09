@@ -25,7 +25,7 @@ export function AppLayout() {
     <div className="app-shell">
       <header className="topbar">
         <div>
-          <h1>Magic Pod Tracker</h1>
+          <h1>Magic Pod Dashboard</h1>
         </div>
         <div className="topbar-actions">
           {user ? <span className="pill">{user.email ?? 'Signed in'}</span> : null}

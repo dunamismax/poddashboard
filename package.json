@@ -1,12 +1,12 @@
 {
-  "name": "pod-tracker",
+  "name": "pod-dashboard",
   "version": "1.0.0",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dunamismax/pod-tracker.git"
+    "url": "https://github.com/dunamismax/pod-dashboard.git"
   },
-  "homepage": "https://github.com/dunamismax/pod-tracker",
+  "homepage": "https://poddashboard.com",
   "scripts": {
     "start": "vite",
     "dev": "vite",
