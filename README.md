@@ -1,7 +1,9 @@
-# Pod Tracker (Web)
+# Magic Pod Dashboard (Web)
 
-Pod Tracker is a privacy-first web app for Magic: The Gathering pods and other tabletop groups.
+Magic Pod Dashboard is a privacy-first web app for Magic: The Gathering pods and other tabletop groups.
 It focuses on event planning, attendance, and real-time session updates.
+
+Live URL: https://poddashboard.com
 
 ## Tech stack
 

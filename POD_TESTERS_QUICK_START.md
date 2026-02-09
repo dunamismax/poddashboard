@@ -1,10 +1,10 @@
 # Pod Testers Quick Start (Web)
 
-This guide is for friends testing Pod Tracker in the browser.
+This guide is for friends testing Pod Dashboard in the browser.
 
 ## 1) Open the website URL
 
-Ask the organizer for the latest Pod Tracker web link.
+Ask the organizer for the latest Pod Dashboard web link, or use `https://poddashboard.com`.
 
 ## 2) Sign in
 
