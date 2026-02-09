@@ -55,4 +55,4 @@ It focuses on event planning, attendance, and real-time session updates.
 
 ## License
 
-AGPL-3.0. See `LICENSE`.
+MIT. See `LICENSE`.

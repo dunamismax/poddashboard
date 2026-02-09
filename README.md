@@ -55,4 +55,4 @@ The app uses email one-time-code auth on `/auth`.
 
 ## License
 
-AGPL-3.0. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
