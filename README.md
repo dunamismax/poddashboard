@@ -17,11 +17,17 @@ It focuses on event-scoped planning, arrival, and real-time coordination.
 Create a local `.env` file:
 
 ```bash
+# Preferred keys for web (Vite)
 VITE_SUPABASE_URL=...
 VITE_SUPABASE_ANON_KEY=...
+
+# Optional compatibility keys from Expo projects
+EXPO_PUBLIC_SUPABASE_URL=...
+EXPO_PUBLIC_SUPABASE_ANON_KEY=...
 ```
 
-`.env.example` includes the required keys.
+`.env.example` includes the required keys. The app prefers `VITE_*` and can also read `EXPO_PUBLIC_*`.
+After changing `.env`, restart the dev server.
 
 ## Commands
 
