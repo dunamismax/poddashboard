@@ -7,86 +7,38 @@ This file gives fast context for AI agents working in this repo.
 Magic Pod Dashboard is a web app for Magic: The Gathering pods and other tabletop groups.
 It focuses on pod management, event planning, attendance and arrival tracking, invites, and real-time notifications.
 
-## Tech stack
-
----
-
-### Frontend
-
-- **Framework + routing:** React Router (Framework mode)
-- **UI:** React
-- **Language:** TypeScript
-- **Build tool / dev server:** Vite
-
-### Backend and API (TypeScript)
-
-- **Server runtime:** Bun
-- **API approach:** React Router route modules written in TypeScript
-  - **Loaders / actions** for app data mutations and reads
-  - **JSON “resource routes”** under `/api/*` for API-style endpoints (still TypeScript, still in the same server)
-
-### Database
-
-- **Database:** PostgreSQL
-- **DB driver:** `pg` (node-postgres)
-
-### Auth and email
-
-- **Auth model:** Email OTP + server-side sessions (cookie-based)
-- **SMTP sending:** Nodemailer
-
-### Validation and quality
-
-- **Validation:** Zod
-- **Linting:** ESLint
-
-### Deployment and hosting
-
-- **Containerization:** Docker + Docker Compose
-- **Reverse proxy / TLS:** Caddy
-- **Hosting target:** Self-hosted Ubuntu server
-
 ## Repo layout
 
-- `app/`
-  - `app/root.tsx` : root layout + auth-aware header
-  - `app/routes.ts` : route table (framework mode)
-  - `app/routes/` : route modules (pages + `/api/*` resources)
-  - `app/lib/` : env, db, auth, sessions, validation
-- `scripts/`
-  - `scripts/postgres-setup.sql` : schema source of truth
-  - `scripts/migrate.ts` : migration runner
-- `Dockerfile`, `docker-compose.yml`, `Caddyfile`
-  - container build, orchestration, TLS reverse proxy
+- `pod-app/`
+  - Laravel 12 + Livewire 4 application
+  - `app/` domain logic, models, Livewire classes, services
+  - `resources/views/livewire/` full-page Livewire views
+  - `routes/web.php` web routes and `/api/*` session-auth API routes
+  - `database/migrations/` schema source of truth
 
 ## Environment
 
-- Use `.env` for local secrets.
+- Work from `pod-app/.env` (copy from `pod-app/.env.example`).
 - Required keys:
   - `DATABASE_URL`
-  - `SESSION_SECRET`
   - `SMTP_HOST`
   - `SMTP_PORT`
   - `SMTP_SECURE`
   - `SMTP_FROM`
-- `.env.example` exists; never commit real secrets.
 
 ## Commands
 
-- Install: `bun install`
-- Run dev server: `bun run dev`
-- Build: `bun run build`
-- Start built server: `bun run start`
-- Lint: `bun run lint`
-- Run migrations: `bun run db:migrate`
+- Install PHP deps: `cd pod-app && composer install`
+- Install frontend deps: `cd pod-app && npm install`
+- Run app: `cd pod-app && php artisan serve`
+- Run tests: `cd pod-app && php artisan test`
+- Run migrations: `cd pod-app && php artisan migrate`
 
 ## Conventions
 
-- Keep route modules under `app/routes/`.
-- Keep server/domain logic under `app/lib/`.
-- Use Zod for env/input validation.
-- Use route loaders/actions and resource routes for data access.
-- Keep schema updates in `scripts/postgres-setup.sql`.
+- Keep domain logic in `pod-app/app/Services`.
+- Keep Livewire page behavior in class-based components under `pod-app/app/Livewire`.
+- Keep schema changes in Laravel migrations under `pod-app/database/migrations`.
 
 ## License
 
