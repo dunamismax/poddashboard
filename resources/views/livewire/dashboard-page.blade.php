@@ -62,7 +62,7 @@
         @else
             <ul class="mt-3 space-y-3">
                 @foreach ($pods as $pod)
-                    <li class="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
+                    <li wire:key="pod-{{ $pod->id }}" class="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
                         <p class="text-sm font-semibold text-zinc-900">{{ $pod->name }}</p>
                         @if ($pod->description)
                             <p class="text-sm text-zinc-600">{{ $pod->description }}</p>
@@ -81,7 +81,7 @@
         @else
             <ul class="mt-3 space-y-3">
                 @foreach ($events as $event)
-                    <li class="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
+                    <li wire:key="event-{{ $event->id }}" class="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
                         <p class="text-sm font-semibold text-zinc-900">{{ $event->title }}</p>
                         <p class="text-sm text-zinc-600">
                             {{ $event->pod?->name }} · {{ $event->scheduled_for?->format('M j, Y g:i A') }}
