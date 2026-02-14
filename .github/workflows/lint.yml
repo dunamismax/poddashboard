@@ -30,8 +30,15 @@ jobs:
           php-version: '8.4'
 
       - name: Add Flux credentials
-        if: ${{ secrets.FLUX_USERNAME != '' && secrets.FLUX_LICENSE_KEY != '' }}
-        run: composer config http-basic.composer.fluxui.dev "${{ secrets.FLUX_USERNAME }}" "${{ secrets.FLUX_LICENSE_KEY }}"
+        env:
+          FLUX_USERNAME: ${{ secrets.FLUX_USERNAME }}
+          FLUX_LICENSE_KEY: ${{ secrets.FLUX_LICENSE_KEY }}
+        run: |
+          if [ -n "${FLUX_USERNAME:-}" ] && [ -n "${FLUX_LICENSE_KEY:-}" ]; then
+            composer config http-basic.composer.fluxui.dev "${FLUX_USERNAME}" "${FLUX_LICENSE_KEY}"
+          else
+            echo "Flux credentials not set; skipping composer auth config."
+          fi
 
       - name: Install Dependencies
         run: |
