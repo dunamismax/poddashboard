@@ -6,6 +6,7 @@ use App\Mail\OtpCodeMail;
 use App\Models\OtpCode;
 use App\Services\OtpAuthService;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
 
 it('sends an otp code from the login page', function (): void {
@@ -50,6 +51,57 @@ it('rejects an invalid otp code', function (): void {
         ->set('code', $invalidCode)
         ->call('verify')
         ->assertHasErrors(['code']);
+
+    expect(auth()->check())->toBeFalse();
+});
+
+it('throttles repeated otp code requests', function (): void {
+    Mail::fake();
+
+    $email = 'throttle-send@example.com';
+    $rateLimitKey = 'otp:send:'.$email.'|127.0.0.1';
+    RateLimiter::clear($rateLimitKey);
+
+    for ($attempt = 0; $attempt < 5; $attempt++) {
+        Livewire::test(LoginOtpPage::class)
+            ->set('email', $email)
+            ->call('sendCode')
+            ->assertRedirect(route('verify', ['email' => $email], false));
+    }
+
+    Livewire::test(LoginOtpPage::class)
+        ->set('email', $email)
+        ->call('sendCode')
+        ->assertHasErrors(['email'])
+        ->assertSee('Too many code requests.');
+
+    Mail::assertSent(OtpCodeMail::class, 5);
+});
+
+it('throttles otp verification attempts', function (): void {
+    Mail::fake();
+
+    $email = 'throttle-verify@example.com';
+    $rateLimitKey = 'otp:verify:'.$email.'|127.0.0.1';
+    RateLimiter::clear($rateLimitKey);
+
+    $code = app(OtpAuthService::class)->issueCode($email);
+    $invalidCode = $code === '000000' ? '000001' : '000000';
+
+    for ($attempt = 0; $attempt < 8; $attempt++) {
+        Livewire::test(VerifyOtpPage::class, ['email' => $email])
+            ->set('email', $email)
+            ->set('code', $invalidCode)
+            ->call('verify')
+            ->assertHasErrors(['code']);
+    }
+
+    Livewire::test(VerifyOtpPage::class, ['email' => $email])
+        ->set('email', $email)
+        ->set('code', $invalidCode)
+        ->call('verify')
+        ->assertHasErrors(['code'])
+        ->assertSee('Too many attempts.');
 
     expect(auth()->check())->toBeFalse();
 });
