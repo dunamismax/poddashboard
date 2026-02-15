@@ -1,117 +1,118 @@
 <?php
 
-use App\Livewire\LoginOtpPage;
-use App\Livewire\VerifyOtpPage;
-use App\Mail\OtpCodeMail;
-use App\Models\OtpCode;
-use App\Services\OtpAuthService;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\RateLimiter;
-use Livewire\Livewire;
+use App\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 
-it('renders otp pages with flux assets', function (): void {
+it('renders authentication pages with flux assets', function (): void {
     $this->get('/login')
         ->assertOk()
         ->assertSee('/flux/flux', false);
 
-    $this->get('/verify')
+    $this->get('/register')
+        ->assertOk()
+        ->assertSee('/flux/flux', false);
+
+    $this->get('/forgot-password')
         ->assertOk()
         ->assertSee('/flux/flux', false);
 });
 
-it('sends an otp code from the login page', function (): void {
-    Mail::fake();
+it('registers a user with the built-in auth flow', function (): void {
+    $response = $this->post('/register', [
+        'name' => 'New Player',
+        'email' => 'player@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+    ]);
 
-    Livewire::test(LoginOtpPage::class)
-        ->set('email', 'PLAYER@example.com')
-        ->call('sendCode')
-        ->assertRedirect(route('verify', ['email' => 'player@example.com'], false));
+    $response->assertRedirect(route('dashboard', absolute: false));
 
-    expect(OtpCode::query()->where('email', 'player@example.com')->exists())->toBeTrue();
-
-    Mail::assertSent(OtpCodeMail::class, function (OtpCodeMail $mail): bool {
-        return $mail->hasTo('player@example.com');
-    });
+    $this->assertAuthenticated();
+    expect(User::query()->where('email', 'player@example.com')->exists())->toBeTrue();
 });
 
-it('verifies a valid otp code and authenticates the user', function (): void {
-    Mail::fake();
+it('authenticates a user with valid credentials', function (): void {
+    $user = User::factory()->create([
+        'email' => 'player@example.com',
+        'password' => 'password',
+    ]);
 
-    $code = app(OtpAuthService::class)->issueCode('player@example.com');
+    $response = $this->post('/login', [
+        'email' => 'player@example.com',
+        'password' => 'password',
+    ]);
 
-    Livewire::test(VerifyOtpPage::class, ['email' => 'player@example.com'])
-        ->set('email', 'player@example.com')
-        ->set('code', $code)
-        ->call('verify')
-        ->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect(route('dashboard', absolute: false));
 
-    expect(auth()->check())->toBeTrue();
-    expect(auth()->user()?->email)->toBe('player@example.com');
-    expect(OtpCode::query()->where('email', 'player@example.com')->first()?->consumed_at)->not->toBeNull();
+    $this->assertAuthenticatedAs($user);
 });
 
-it('rejects an invalid otp code', function (): void {
-    Mail::fake();
+it('rejects invalid credentials', function (): void {
+    User::factory()->create([
+        'email' => 'player@example.com',
+        'password' => 'password',
+    ]);
 
-    $code = app(OtpAuthService::class)->issueCode('player@example.com');
-    $invalidCode = $code === '000000' ? '000001' : '000000';
+    $response = $this->from('/login')->post('/login', [
+        'email' => 'player@example.com',
+        'password' => 'wrong-password',
+    ]);
 
-    Livewire::test(VerifyOtpPage::class, ['email' => 'player@example.com'])
-        ->set('email', 'player@example.com')
-        ->set('code', $invalidCode)
-        ->call('verify')
-        ->assertHasErrors(['code']);
-
-    expect(auth()->check())->toBeFalse();
+    $response->assertRedirect('/login');
+    $response->assertSessionHasErrors('email');
+    $this->assertGuest();
 });
 
-it('throttles repeated otp code requests', function (): void {
-    Mail::fake();
+it('logs out an authenticated user', function (): void {
+    $user = User::factory()->create();
 
-    $email = 'throttle-send@example.com';
-    $rateLimitKey = 'otp:send:'.$email.'|127.0.0.1';
-    RateLimiter::clear($rateLimitKey);
+    $response = $this->actingAs($user)->post('/logout');
 
-    for ($attempt = 0; $attempt < 5; $attempt++) {
-        Livewire::test(LoginOtpPage::class)
-            ->set('email', $email)
-            ->call('sendCode')
-            ->assertRedirect(route('verify', ['email' => $email], false));
-    }
-
-    Livewire::test(LoginOtpPage::class)
-        ->set('email', $email)
-        ->call('sendCode')
-        ->assertHasErrors(['email'])
-        ->assertSee('Too many code requests.');
-
-    Mail::assertSent(OtpCodeMail::class, 5);
+    $response->assertRedirect('/');
+    $this->assertGuest();
 });
 
-it('throttles otp verification attempts', function (): void {
-    Mail::fake();
+it('sends a password reset link', function (): void {
+    Notification::fake();
 
-    $email = 'throttle-verify@example.com';
-    $rateLimitKey = 'otp:verify:'.$email.'|127.0.0.1';
-    RateLimiter::clear($rateLimitKey);
+    $user = User::factory()->create([
+        'email' => 'player@example.com',
+    ]);
 
-    $code = app(OtpAuthService::class)->issueCode($email);
-    $invalidCode = $code === '000000' ? '000001' : '000000';
+    $response = $this->post('/forgot-password', [
+        'email' => 'player@example.com',
+    ]);
 
-    for ($attempt = 0; $attempt < 8; $attempt++) {
-        Livewire::test(VerifyOtpPage::class, ['email' => $email])
-            ->set('email', $email)
-            ->set('code', $invalidCode)
-            ->call('verify')
-            ->assertHasErrors(['code']);
-    }
+    $response->assertSessionHas('status');
 
-    Livewire::test(VerifyOtpPage::class, ['email' => $email])
-        ->set('email', $email)
-        ->set('code', $invalidCode)
-        ->call('verify')
-        ->assertHasErrors(['code'])
-        ->assertSee('Too many attempts.');
+    Notification::assertSentTo($user, ResetPassword::class);
+});
 
-    expect(auth()->check())->toBeFalse();
+it('resets the password with a valid token', function (): void {
+    $user = User::factory()->create([
+        'email' => 'player@example.com',
+        'password' => 'password',
+    ]);
+
+    $token = Password::broker()->createToken($user);
+
+    $response = $this->post('/reset-password', [
+        'token' => $token,
+        'email' => 'player@example.com',
+        'password' => 'new-password',
+        'password_confirmation' => 'new-password',
+    ]);
+
+    $response
+        ->assertRedirect(route('login', absolute: false))
+        ->assertSessionHas('status');
+
+    $this->post('/login', [
+        'email' => 'player@example.com',
+        'password' => 'new-password',
+    ])->assertRedirect(route('dashboard', absolute: false));
+
+    $this->assertAuthenticated();
 });

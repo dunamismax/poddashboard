@@ -24,14 +24,21 @@
                             </flux:button>
                         </form>
                     @else
-                        <flux:link href="{{ route('login') }}" wire:navigate>Sign in</flux:link>
+                        <flux:link href="{{ route('login') }}">Sign in</flux:link>
+                        @if (Route::has('register'))
+                            <flux:link href="{{ route('register') }}">Create account</flux:link>
+                        @endif
                     @endauth
                 </div>
             </div>
         </header>
 
         <main class="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-            {{ $slot }}
+            @isset($slot)
+                {{ $slot }}
+            @else
+                @yield('content')
+            @endisset
         </main>
 
         @livewireScripts
