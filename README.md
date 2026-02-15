@@ -56,8 +56,7 @@ It uses a server-driven UI with Flux components, headless auth via Fortify, and 
 
 - PHP 8.2+ (tested in this repo with 8.4.1)
 - Composer 2+
-- Node.js 22+
-- npm 10+
+- Bun 1.1+
 
 ## Setup
 
@@ -74,17 +73,17 @@ composer setup
 ```bash
 cp .env.example .env
 composer install
-npm install
+bun install
 php artisan key:generate
 php -r "file_exists('database/database.sqlite') || touch('database/database.sqlite');"
 php artisan migrate
-npm run build
+bun run build
 ```
 
 ## Run Locally
 
 ```bash
-composer dev
+bun run dev
 ```
 
 This starts:
@@ -92,9 +91,9 @@ This starts:
 - `php artisan serve`
 - `php artisan queue:listen`
 - `php artisan pail`
-- `npm run dev`
+- `bun run dev:vite`
 
-If UI changes are not visible, run `npm run dev` or `npm run build`.
+If UI changes are not visible, run `bun run dev:vite` or `bun run build`.
 
 ## Authorization Model
 
@@ -151,7 +150,7 @@ php artisan test --compact tests/Feature/ApiEndpointsTest.php
 composer analyse
 composer lint
 vendor/bin/pint --dirty --format agent
-npm run build
+bun run build
 ```
 
 ## Project Layout
